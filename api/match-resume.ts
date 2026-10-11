@@ -18,6 +18,15 @@ type ApiResponse = {
   json: (payload: Record<string, unknown>) => void
 }
 
+function isGeminiServiceUnavailable(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    error.status === 503
+  )
+}
+
 export default async function handler(
   req: ApiRequest,
   res: ApiResponse,
@@ -74,7 +83,7 @@ export default async function handler(
       },
     })
 
-    const result = await model.generateContent(`
+    const prompt = `
 You are a resume and job-description matching assistant.
 
 Analyze the resume against the job description.
@@ -107,7 +116,20 @@ ${resumeText}
 
 JOB DESCRIPTION:
 ${jobDescription}
-`)
+`
+
+    let result: Awaited<ReturnType<typeof model.generateContent>>
+
+    try {
+      result = await model.generateContent(prompt)
+    } catch (error) {
+      if (!isGeminiServiceUnavailable(error)) {
+        throw error
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      result = await model.generateContent(prompt)
+    }
 
     const data = JSON.parse(result.response.text())
 
@@ -141,17 +163,20 @@ ${jobDescription}
   } catch (error) {
     console.error('Resume matching error:', error)
 
+    const serviceUnavailable = isGeminiServiceUnavailable(error)
     const details =
       error instanceof Error
         ? error.message
         : 'Unknown Gemini API error'
     const safeDetails = details.replaceAll(apiKey, '[redacted]')
 
-    return res.status(500).json({
+    return res.status(serviceUnavailable ? 503 : 500).json({
       error:
-        process.env.NODE_ENV === 'production'
-          ? 'Failed to analyze resume. Please try again.'
-          : `Resume matching failed: ${safeDetails}`,
+        serviceUnavailable
+          ? 'The AI service is temporarily busy. Please try again shortly.'
+          : process.env.NODE_ENV === 'production'
+            ? 'Failed to analyze resume. Please try again.'
+            : `Resume matching failed: ${safeDetails}`,
     })
   }
 }
