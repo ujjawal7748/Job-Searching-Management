@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/analytics",
+      "destination": "/"
+    },
+    {
+      "source": "/resume-match",
+      "destination": "/"
+    },
+    {
+      "source": "/cover-letter",
+      "destination": "/"
+    }
+  ]
+}
