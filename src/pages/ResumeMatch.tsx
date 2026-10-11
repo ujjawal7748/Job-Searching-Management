@@ -1,17 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { getJobs } from '../lib/api'
 import { deleteSavedResume, getSavedResume, saveResume, } from '../lib/resumeStorage'
-import type { Job } from '../types/job'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useAuth } from '../auth/authState'
 import AIHistoryPanel from '../components/AIHistoryPanel'
-import {
-    deleteAiHistory,
-    getAiHistory,
-    saveAiHistory,
-} from '../lib/aiHistory'
 import type { AiHistoryRecord, ResumeMatchResult } from '../lib/aiHistory'
+import { useAiHistory } from '../hooks/useAiHistory'
+import { useJobData } from '../hooks/useJobs'
 
 const UNREADABLE_PDF_MESSAGE =
     "We couldn't read this PDF. Please upload a valid PDF file."
@@ -58,49 +53,40 @@ async function extractPdfText(file: File): Promise<string> {
 function ResumeMatch() {
     const { session } = useAuth()
     const userId = session?.user.id ?? ''
-    const [jobs, setJobs] = useState<Job[]>([])
+    const { data: jobData, isPending: isJobsLoading, error: jobsError } = useJobData(userId)
+    const jobs = jobData?.jobs.filter((job) => !job.deletedAt) ?? []
+    const {
+        records: history,
+        isLoading: isHistoryLoading,
+        error: historyError,
+        save: saveHistory,
+        remove: removeHistory,
+    } = useAiHistory(userId, 'resume-match')
     const [selectedJobId, setSelectedJobId] = useState('')
     const [resumeName, setResumeName] = useState('')
-    const [isLoading, setIsLoading] = useState(true)
+    const [isResumeLoading, setIsResumeLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
-    const [history, setHistory] = useState<AiHistoryRecord[]>([])
-    const [isHistoryLoading, setIsHistoryLoading] = useState(true)
-    const [historyError, setHistoryError] = useState('')
+    const [historyActionError, setHistoryActionError] = useState('')
 
     useEffect(() => {
-        async function loadData() {
-            const [jobsResult, resumeResult, historyResult] = await Promise.allSettled([
-                getJobs(),
-                getSavedResume(),
-                userId ? getAiHistory('resume-match', userId) : Promise.resolve([]),
-            ])
+        let active = true
+        void getSavedResume()
+            .then((savedResume) => {
+                if (active) setResumeName(savedResume?.name ?? '')
+            })
+            .catch(() => {
+                if (active) setError('Could not load your saved resume.')
+            })
+            .finally(() => {
+                if (active) setIsResumeLoading(false)
+            })
 
-            if (jobsResult.status === 'fulfilled') {
-                setJobs(jobsResult.value.filter((job) => !job.deletedAt))
-            } else {
-                setError('Could not load saved jobs.')
-            }
-
-            if (resumeResult.status === 'fulfilled') {
-                setResumeName(resumeResult.value?.name ?? '')
-            } else {
-                setError((current) => current || 'Could not load your saved resume.')
-            }
-
-            if (historyResult.status === 'fulfilled') {
-                setHistory(historyResult.value)
-            } else {
-                setHistoryError('Could not load your saved history. Please refresh.')
-            }
-
-            setIsLoading(false)
-            setIsHistoryLoading(false)
+        return () => {
+            active = false
         }
-
-        void loadData()
-    }, [userId])
+    }, [])
 
     async function handleResumeUpload(
         event: React.ChangeEvent<HTMLInputElement>,
@@ -231,16 +217,17 @@ function ResumeMatch() {
             setMatchResult(data.data)
             setProgress(100)
             try {
-                const record = await saveAiHistory(
-                    'resume-match',
-                    `${selectedJob.company} · ${selectedJob.position}`.slice(0, 300),
-                    data.data,
-                    userId,
+                await saveHistory({
+                    title: `${selectedJob.company} · ${selectedJob.position}`.slice(0, 300),
+                    result: data.data,
+                })
+                setHistoryActionError('')
+            } catch (historySaveError) {
+                setHistoryActionError(
+                    historySaveError instanceof Error
+                        ? `Analysis completed, but could not save it: ${historySaveError.message}`
+                        : 'Analysis completed, but this result could not be saved to your history.',
                 )
-                setHistory((records) => [record, ...records])
-                setHistoryError('')
-            } catch {
-                setHistoryError('Analysis completed, but this result could not be saved to your history.')
             }
         } catch (err) {
             setProgress(0)
@@ -270,15 +257,14 @@ function ResumeMatch() {
     async function removeHistoryRecord(record: AiHistoryRecord) {
         if (!window.confirm(`Delete the saved result “${record.title}”?`)) return
         try {
-            await deleteAiHistory(record.id, userId)
-            setHistory((records) => records.filter((item) => item.id !== record.id))
-            setHistoryError('')
+            await removeHistory(record.id)
+            setHistoryActionError('')
         } catch (err) {
-            setHistoryError(err instanceof Error ? err.message : 'Could not delete this history item.')
+            setHistoryActionError(err instanceof Error ? err.message : 'Could not delete this history item.')
         }
     }
 
-    if (isLoading) {
+    if (isJobsLoading || isResumeLoading) {
         return <div className="p-8 text-slate-600">Loading your saved jobs...</div>
     }
 
@@ -507,7 +493,7 @@ function ResumeMatch() {
                 kind="resume-match"
                 records={history}
                 isLoading={isHistoryLoading}
-                error={historyError}
+                error={historyActionError || historyError || jobsError?.message || ''}
                 onSelect={openHistoryRecord}
                 onDelete={(record) => void removeHistoryRecord(record)}
               />

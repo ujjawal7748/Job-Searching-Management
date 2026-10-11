@@ -1,19 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { Job } from '../types/job'
-import { getJobs } from '../lib/api'
+import { useMemo, useState } from 'react'
 import { useAuth } from '../auth/authState'
 import AIHistoryPanel from '../components/AIHistoryPanel'
-import {
-  deleteAiHistory,
-  getAiHistory,
-  saveAiHistory,
-} from '../lib/aiHistory'
 import type { AiHistoryRecord } from '../lib/aiHistory'
+import { useAiHistory } from '../hooks/useAiHistory'
+import { useJobData } from '../hooks/useJobs'
 
 function CoverLetter() {
   const { session } = useAuth()
   const userId = session?.user.id ?? ''
-  const [jobs, setJobs] = useState<Job[]>([])
+  const { data: jobData, error: jobsError } = useJobData(userId)
+  const jobs = useMemo(
+    () => jobData?.jobs.filter((job) => !job.deletedAt) ?? [],
+    [jobData?.jobs],
+  )
+  const {
+    records: history,
+    isLoading: isHistoryLoading,
+    error: historyError,
+    save: saveHistory,
+    remove: removeHistory,
+  } = useAiHistory(userId, 'cover-letter')
   const [selectedCompany, setSelectedCompany] = useState('')
   const [selectedJobId, setSelectedJobId] = useState('')
 
@@ -29,31 +35,7 @@ function CoverLetter() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [history, setHistory] = useState<AiHistoryRecord[]>([])
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true)
-  const [historyError, setHistoryError] = useState('')
-
-  useEffect(() => {
-    async function loadData() {
-      const [jobsResult, historyResult] = await Promise.allSettled([
-        getJobs(),
-        userId ? getAiHistory('cover-letter', userId) : Promise.resolve([]),
-      ])
-      if (jobsResult.status === 'fulfilled') {
-        setJobs(jobsResult.value.filter((job) => !job.deletedAt))
-      } else {
-        setError('Unable to load saved jobs. Please refresh the page.')
-      }
-      if (historyResult.status === 'fulfilled') {
-        setHistory(historyResult.value)
-      } else {
-        setHistoryError('Could not load your saved history. Please refresh.')
-      }
-      setIsHistoryLoading(false)
-    }
-
-    void loadData()
-  }, [userId])
+  const [historyActionError, setHistoryActionError] = useState('')
 
   const companies = useMemo(
     () =>
@@ -153,16 +135,17 @@ function CoverLetter() {
 
       setCoverLetter(data.coverLetter)
       try {
-        const record = await saveAiHistory(
-          'cover-letter',
-          `${company.trim()} · ${position.trim()}`.slice(0, 300),
-          data.coverLetter,
-          userId,
+        await saveHistory({
+          title: `${company.trim()} · ${position.trim()}`.slice(0, 300),
+          result: data.coverLetter,
+        })
+        setHistoryActionError('')
+      } catch (historySaveError) {
+        setHistoryActionError(
+          historySaveError instanceof Error
+            ? `Your letter was generated, but could not be saved: ${historySaveError.message}`
+            : 'Your letter was generated, but could not be saved to history.',
         )
-        setHistory((records) => [record, ...records])
-        setHistoryError('')
-      } catch {
-        setHistoryError('Your letter was generated, but could not be saved to history.')
       }
     } catch (err) {
       setError(
@@ -203,11 +186,10 @@ function CoverLetter() {
   async function removeHistoryRecord(record: AiHistoryRecord) {
     if (!window.confirm(`Delete the saved result “${record.title}”?`)) return
     try {
-      await deleteAiHistory(record.id, userId)
-      setHistory((records) => records.filter((item) => item.id !== record.id))
-      setHistoryError('')
+      await removeHistory(record.id)
+      setHistoryActionError('')
     } catch (err) {
-      setHistoryError(err instanceof Error ? err.message : 'Could not delete this history item.')
+      setHistoryActionError(err instanceof Error ? err.message : 'Could not delete this history item.')
     }
   }
 
@@ -483,7 +465,7 @@ function CoverLetter() {
          kind="cover-letter"
          records={history}
          isLoading={isHistoryLoading}
-         error={historyError}
+         error={historyActionError || historyError || jobsError?.message || ''}
          onSelect={openHistoryRecord}
          onDelete={(record) => void removeHistoryRecord(record)}
        />

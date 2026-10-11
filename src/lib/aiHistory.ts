@@ -83,13 +83,13 @@ function parseHistoryRecord(value: unknown): AiHistoryRecord {
 }
 
 async function getVerifiedUserId(expectedUserId: string): Promise<string> {
-  const { data, error } = await getSupabase().auth.getUser()
-  if (error) throw new Error('Could not verify your sign-in. Please sign in again.')
-  if (!data.user) throw new Error('You must be signed in to access AI history.')
-  if (data.user.id !== expectedUserId) {
+  const { data, error } = await getSupabase().auth.getSession()
+  if (error) throw new Error('Could not read your sign-in. Please sign in again.')
+  if (!data.session?.user) throw new Error('You must be signed in to access AI history.')
+  if (data.session.user.id !== expectedUserId) {
     throw new Error('Your sign-in changed. Refresh the page and try again.')
   }
-  return data.user.id
+  return data.session.user.id
 }
 
 export async function getAiHistory(

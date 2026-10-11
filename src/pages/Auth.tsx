@@ -8,6 +8,7 @@ function Auth() {
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -54,8 +55,7 @@ function Auth() {
               Configure <code>VITE_SUPABASE_URL</code> and{' '}
               <code>VITE_SUPABASE_ANON_KEY</code> locally, or{' '}
               <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> on
-              Vercel. Then apply the SQL migrations in{' '}
-              <code>supabase/migrations</code>.
+              Vercel.
             </p>
           </>
         ) : (
@@ -97,16 +97,27 @@ function Auth() {
             <label htmlFor="auth-password" className="mb-1 block text-sm font-medium text-slate-700">
               Password
             </label>
-            <input
-              id="auth-password"
-              type="password"
-              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
-              minLength={6}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-3"
-            />
+            <div className="relative">
+              <input
+                id="auth-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+                minLength={6}
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-3 pr-16"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="absolute inset-y-0 right-2 my-auto h-9 rounded-md px-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
           <button
             type="submit"

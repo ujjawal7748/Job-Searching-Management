@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/authState'
 import Navbar from './components/Navbar'
-import Dashboard from './pages/dashboard'
-import ResumeMatch from './pages/ResumeMatch'
-import Analytics from './pages/Analytics'
-import CoverLetter from './pages/CoverLetter'
 import Auth from './pages/Auth'
 import { getSupabase } from './lib/supabase'
+
+const Dashboard = lazy(() => import('./pages/dashboard'))
+const ResumeMatch = lazy(() => import('./pages/ResumeMatch'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const CoverLetter = lazy(() => import('./pages/CoverLetter'))
+
+function PageLoading() {
+  return (
+    <main className="mx-auto max-w-7xl p-6" aria-live="polite">
+      <div className="h-8 w-56 animate-pulse rounded-lg bg-slate-200" />
+      <div className="mt-3 h-4 w-80 max-w-full animate-pulse rounded bg-slate-100" />
+      <div className="mt-8 h-48 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+    </main>
+  )
+}
 
 function AppContent() {
   const { session, isLoading } = useAuth()
@@ -46,15 +57,20 @@ function AppContent() {
 
   return (
     <>
-      <Navbar email={session.user.email ?? ''} onSignOut={() => void handleSignOut()} />
+      <Navbar
+        email={session.user.email ?? ''}
+        onSignOut={() => void handleSignOut()}
+      />
 
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/resume-match" element={<ResumeMatch />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/cover-letter" element={<CoverLetter />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/resume-match" element={<ResumeMatch />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/cover-letter" element={<CoverLetter />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   )
 }

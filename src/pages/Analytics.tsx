@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, } from 'recharts'
 
-import type { Job } from '../types/job'
-import { getJobs } from '../lib/api'
+import { useAuth } from '../auth/authState'
+import { useJobData } from '../hooks/useJobs'
 import {
     responseRate,
     applicationsThisWeek,
@@ -12,23 +11,16 @@ import {
 } from '../lib/stats'
 
 function Analytics() {
-    const [jobs, setJobs] = useState<Job[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState('')
-
-    useEffect(() => {
-        getJobs()
-            .then((data) => setJobs(data.filter((job) => !job.deletedAt)))
-            .catch(() => setError('Unable to load job analytics.'))
-            .finally(() => setLoading(false))
-    }, [])
+    const { session } = useAuth()
+    const { data: jobData, isPending: loading, error } = useJobData(session?.user.id ?? '')
+    const jobs = jobData?.jobs.filter((job) => !job.deletedAt) ?? []
 
     if (loading) {
         return <main className="p-4 text-slate-600 sm:p-8">Loading analytics...</main>
     }
 
     if (error) {
-        return <main className="p-4 text-red-600 sm:p-8">{error}</main>
+        return <main className="p-4 text-red-600 sm:p-8">{error.message}</main>
     }
 
     const activeJobs = jobs.filter((job) => job.status !== 'wishlist')

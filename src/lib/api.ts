@@ -26,13 +26,13 @@ function parseStoredJobs(key: 'jobs' | 'trash', fallback: Job[]): Job[] {
 
 async function getCurrentUserId(expectedUserId?: string): Promise<string> {
   const client = getSupabase()
-  const { data, error } = await client.auth.getUser()
-  if (error) throw new Error('Could not verify your sign-in. Please sign in again.')
-  if (!data.user) throw new Error('You must be signed in to access saved jobs.')
-  if (expectedUserId && expectedUserId !== data.user.id) {
+  const { data, error } = await client.auth.getSession()
+  if (error) throw new Error('Could not read your sign-in. Please sign in again.')
+  if (!data.session?.user) throw new Error('You must be signed in to access saved jobs.')
+  if (expectedUserId && expectedUserId !== data.session.user.id) {
     throw new Error('Your sign-in changed before this change could be saved. Please retry.')
   }
-  return data.user.id
+  return data.session.user.id
 }
 
 async function writeJobTrackerData(

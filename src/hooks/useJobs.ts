@@ -39,6 +39,7 @@ export function useJobData(userId: string) {
     queryKey: jobDataQueryKey(userId),
     queryFn: () => getJobTrackerData(userId),
     enabled: Boolean(userId),
+    staleTime: 30_000,
   })
 }
 

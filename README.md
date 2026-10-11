@@ -36,7 +36,7 @@ VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
 
 Keep `GEMINI_API_KEY` server-side. The Supabase URL and publishable/anon key are browser-visible by design; never put a Supabase service-role key in frontend variables. Access to job data is protected by the database row-level security policy.
 
-Create a Supabase project, then run the SQL migrations in [`supabase/migrations`](./supabase/migrations) in filename order in its SQL Editor. The job data and AI history tables each enforce per-user row-level security. For local Vite development, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`. For Vercel Preview and Production, add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Project Settings, then redeploy. The Vite configuration maps either naming convention to the same two client settings while explicitly exposing only those values. Use the public anon/publishable key, never a service-role key.
+The connected Supabase project must have the `job_tracker_data` and `ai_generation_history` tables configured with per-user row-level security. Their SQL setup is managed directly in the Supabase project and is intentionally not included in this application repository. For local Vite development, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`. For Vercel Preview and Production, add `SUPABASE_URL` and `SUPABASE_ANON_KEY` in Project Settings, then redeploy. The Vite configuration maps either naming convention to the same two client settings while explicitly exposing only those values. Use the public anon/publishable key, never a service-role key.
 
 Users create an account with email and password. Depending on the Supabase Auth email-confirmation setting, they may need to confirm their email before signing in.
 
