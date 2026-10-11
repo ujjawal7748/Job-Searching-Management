@@ -57,9 +57,9 @@ Resume PDFs remain in browser IndexedDB and do not sync to other devices; upload
 
 ## AI endpoints
 
-- `POST /api/match-resume` — analyzes extracted resume text against a job description. It uses Gemini 3.8 Flash and falls back to Gemini 3.5 Flash-Lite if the primary model responds with HTTP 503.
-- `POST /api/generate-cover-letter` — generates a cover letter.
-- `POST /api/parse-job` — extracts job details from an image; image data is limited to 3 MiB decoded.
+- `POST /api/match-resume` — analyzes extracted resume text against a job description using Gemini 3.5 Flash-Lite.
+- `POST /api/generate-cover-letter` — generates a cover letter using Gemini 3.5 Flash-Lite.
+- `POST /api/parse-job` — extracts job details from an image using Gemini 3.5 Flash-Lite; image data is limited to 3 MiB decoded.
 
 Set `GEMINI_API_KEY` in Vercel Project Settings for deployed environments. AI endpoints call Gemini server-side. Configure production request protection in the Vercel Firewall; the application endpoints do not implement authentication or a distributed rate limiter.
 

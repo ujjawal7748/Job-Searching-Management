@@ -18,15 +18,6 @@ type ApiResponse = {
   json: (payload: Record<string, unknown>) => void
 }
 
-function isGeminiServiceUnavailable(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    error.status === 503
-  )
-}
-
 export default async function handler(
   req: ApiRequest,
   res: ApiResponse,
@@ -77,7 +68,7 @@ export default async function handler(
     const genAI = new GoogleGenerativeAI(apiKey)
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.5-flash-lite',
       generationConfig: {
         responseMimeType: 'application/json',
       },
@@ -118,23 +109,7 @@ JOB DESCRIPTION:
 ${jobDescription}
 `
 
-    let result: Awaited<ReturnType<typeof model.generateContent>>
-
-    try {
-      result = await model.generateContent(prompt)
-    } catch (error) {
-      if (!isGeminiServiceUnavailable(error)) {
-        throw error
-      }
-
-      const fallbackModel = genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash-lite',
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
-      })
-      result = await fallbackModel.generateContent(prompt)
-    }
+    const result = await model.generateContent(prompt)
 
     const data = JSON.parse(result.response.text())
 
@@ -168,20 +143,17 @@ ${jobDescription}
   } catch (error) {
     console.error('Resume matching error:', error)
 
-    const serviceUnavailable = isGeminiServiceUnavailable(error)
     const details =
       error instanceof Error
         ? error.message
         : 'Unknown Gemini API error'
     const safeDetails = details.replaceAll(apiKey, '[redacted]')
 
-    return res.status(serviceUnavailable ? 503 : 500).json({
+    return res.status(500).json({
       error:
-        serviceUnavailable
-          ? 'The AI service is temporarily busy. Please try again shortly.'
-          : process.env.NODE_ENV === 'production'
-            ? 'Failed to analyze resume. Please try again.'
-            : `Resume matching failed: ${safeDetails}`,
+        process.env.NODE_ENV === 'production'
+          ? 'Failed to analyze resume. Please try again.'
+          : `Resume matching failed: ${safeDetails}`,
     })
   }
 }

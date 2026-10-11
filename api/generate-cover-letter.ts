@@ -102,7 +102,7 @@ export default async function handler(
     const genAI = new GoogleGenerativeAI(apiKey)
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.5-flash-lite',
     })
 
     const result = await model.generateContent(`
