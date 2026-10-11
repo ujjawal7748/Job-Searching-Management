@@ -4,158 +4,74 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import type { Job, JobStatus } from '../types/job'
+import type { Job } from '../types/job'
 import {
   addJob,
   deleteJob,
-  getJobs,
+  getJobTrackerData,
+  permanentlyDeleteTrashJob,
   restoreJob,
   saveJobs,
+  saveTrash,
   updateJob,
-  updateJobStatus,
 } from '../lib/api'
+import type { JobTrackerData } from '../lib/api'
 
-const JOBS_QUERY_KEY = ['jobs']
+const jobDataQueryKey = (userId: string) => ['job-data', userId]
 
-export function useJobs() {
-  return useQuery<Job[]>({
-    queryKey: JOBS_QUERY_KEY,
-    queryFn: getJobs,
-  })
-}
-
-export function useAddJob() {
+function useJobDataMutation<TVariables, TResult>(
+  userId: string,
+  mutationFn: (variables: TVariables) => Promise<TResult>,
+) {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: (job: Job) => addJob(job),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: JOBS_QUERY_KEY,
+    mutationFn,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: jobDataQueryKey(userId),
       })
     },
   })
 }
 
-export function useRestoreJob() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (job: Job) => restoreJob(job),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: JOBS_QUERY_KEY,
-      })
-    },
+export function useJobData(userId: string) {
+  return useQuery<JobTrackerData>({
+    queryKey: jobDataQueryKey(userId),
+    queryFn: () => getJobTrackerData(userId),
+    enabled: Boolean(userId),
   })
 }
 
-export function useUpdateJob() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (job: Job) => updateJob(job),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: JOBS_QUERY_KEY,
-      })
-    },
-  })
+export function useAddJob(userId: string) {
+  return useJobDataMutation(userId, (job: Job) => addJob(job, userId))
 }
 
-
-export function useSaveJobs() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (jobs: Job[]) => saveJobs(jobs),
-
-    onMutate: async (jobs: Job[]) => {
-      await queryClient.cancelQueries({ queryKey: JOBS_QUERY_KEY })
-
-      const previousJobs = queryClient.getQueryData<Job[]>(JOBS_QUERY_KEY)
-
-      queryClient.setQueryData<Job[]>(JOBS_QUERY_KEY, jobs)
-
-      return { previousJobs }
-    },
-
-    onError: (_error, _jobs, context) => {
-      if (context?.previousJobs) {
-        queryClient.setQueryData(JOBS_QUERY_KEY, context.previousJobs)
-      }
-    },
-
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: JOBS_QUERY_KEY })
-    },
-  })
+export function useRestoreJob(userId: string) {
+  return useJobDataMutation(userId, (job: Job) => restoreJob(job, userId))
 }
 
-
-export function useUpdateJobStatus() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({
-      jobId,
-      status,
-    }: {
-      jobId: string
-      status: JobStatus
-    }) => updateJobStatus(jobId, status),
-
-    onMutate: async ({ jobId, status }) => {
-      await queryClient.cancelQueries({
-        queryKey: JOBS_QUERY_KEY,
-      })
-
-      const previousJobs =
-        queryClient.getQueryData<Job[]>(JOBS_QUERY_KEY)
-
-      queryClient.setQueryData<Job[]>(
-        JOBS_QUERY_KEY,
-        (currentJobs = []) =>
-          currentJobs.map((job) =>
-            job.id === jobId
-              ? { ...job, status }
-              : job,
-          ),
-      )
-
-      return { previousJobs }
-    },
-
-    onError: (_error, _variables, context) => {
-      if (context?.previousJobs) {
-        queryClient.setQueryData(
-          JOBS_QUERY_KEY,
-          context.previousJobs,
-        )
-      }
-    },
-
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: JOBS_QUERY_KEY,
-      })
-    },
-  })
+export function useUpdateJob(userId: string) {
+  return useJobDataMutation(userId, (job: Job) => updateJob(job, userId))
 }
 
-export function useDeleteJob() {
-  const queryClient = useQueryClient()
+export function useSaveJobs(userId: string) {
+  return useJobDataMutation(userId, (jobs: Job[]) => saveJobs(jobs, userId))
+}
 
-  return useMutation({
-    mutationFn: (jobId: string) => deleteJob(jobId),
+export function useSaveTrash(userId: string) {
+  return useJobDataMutation(userId, (trash: Job[]) => saveTrash(trash, userId))
+}
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: JOBS_QUERY_KEY,
-      })
-    },
-  })
+export function useDeleteJob(userId: string) {
+  return useJobDataMutation(
+    userId,
+    (jobId: string) => deleteJob(jobId, userId),
+  )
+}
+
+export function usePermanentlyDeleteTrashJob(userId: string) {
+  return useJobDataMutation(
+    userId,
+    (jobId: string) => permanentlyDeleteTrashJob(jobId, userId),
+  )
 }

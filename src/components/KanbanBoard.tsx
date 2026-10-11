@@ -55,23 +55,19 @@ function KanbanBoard({
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-      <p className="mb-2 w-full max-w-7xl text-sm text-slate-500 xl:hidden">
-        Scroll horizontally to see all job stages.
-      </p>
       <div
-        className="w-full max-w-7xl min-w-0 snap-x snap-mandatory overflow-x-auto"
+        className="w-full max-w-7xl min-w-0"
         role="region"
         aria-label="Job applications by status"
-        tabIndex={0}
       >
-        <div className="flex w-max gap-4 pb-2 sm:gap-6 xl:w-full">
+        <div className="flex w-full min-w-0 flex-col gap-4 pb-2 sm:gap-6 xl:flex-row">
           {statuses.map((status) => {
             const title = status[0].toUpperCase() + status.slice(1)
 
             return (
               <div
                 key={status}
-                className="w-72 shrink-0 snap-start xl:min-w-0 xl:flex-1"
+                className="w-full min-w-0 xl:flex-1"
               >
                 <KanbanColumn
                   title={title}

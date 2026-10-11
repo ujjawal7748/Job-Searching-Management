@@ -5,7 +5,10 @@ import type { Job, JobStatus } from '../types/job'
 
 type CsvUploadProps = {
     onClose: () => void
-    onJobsParsed: (jobs: Job[]) => {
+    onJobsParsed: (jobs: Job[]) => Promise<{
+        imported: number
+        duplicates: number
+    }> | {
         imported: number
         duplicates: number
     }
@@ -14,6 +17,7 @@ type CsvUploadProps = {
 function CsvUpload({ onClose, onJobsParsed }: CsvUploadProps) {
     const [isDragging, setIsDragging] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
+    const [processingError, setProcessingError] = useState('')
     const [importResult, setImportResult] = useState<{
         imported: number
         duplicates: number
@@ -27,12 +31,13 @@ function CsvUpload({ onClose, onJobsParsed }: CsvUploadProps) {
         }
 
         setIsProcessing(true)
+        setProcessingError('')
 
         Papa.parse<Record<string, string>>(file, {
             header: true,
             skipEmptyLines: true,
 
-            complete: (results) => {
+            complete: async (results) => {
                 const rows = results.data
                 const normalizeKey = (key: string) =>
                     key
@@ -104,14 +109,23 @@ function CsvUpload({ onClose, onJobsParsed }: CsvUploadProps) {
                     }
                 })
 
-                const { imported, duplicates } = onJobsParsed(parsedJobs)
-
-                setImportResult({
-                    imported,
-                    duplicates,
-                    invalid: invalidRows,
-                })
-
+                try {
+                    const { imported, duplicates } = await onJobsParsed(parsedJobs)
+                    setImportResult({
+                        imported,
+                        duplicates,
+                        invalid: invalidRows,
+                    })
+                } catch {
+                    setProcessingError(
+                        'Could not save the imported jobs. Your file was not marked as imported; please try again.',
+                    )
+                } finally {
+                    setIsProcessing(false)
+                }
+            },
+            error: () => {
+                setProcessingError('Could not read this CSV file. Please check the file and try again.')
                 setIsProcessing(false)
             },
         })
@@ -168,6 +182,11 @@ function CsvUpload({ onClose, onJobsParsed }: CsvUploadProps) {
 
                 {!importResult && (
                     <>
+                        {processingError && (
+                            <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                                {processingError}
+                            </p>
+                        )}
                         <div
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}

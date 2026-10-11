@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 import type { Job } from '../types/job'
@@ -7,7 +7,17 @@ import KanbanBoard from '../components/KanbanBoard'
 import { jobs as initialJobs } from '../lib/jobs'
 import AddJobOptions from '../components/AddJobOptions'
 import { useUIStore } from '../store/uiStore'
-import { useAddJob, useDeleteJob, useJobs, useRestoreJob, useUpdateJob, useUpdateJobStatus } from '../hooks/useJobs'
+import {
+    useAddJob,
+    useDeleteJob,
+    useJobData,
+    usePermanentlyDeleteTrashJob,
+    useRestoreJob,
+    useSaveJobs,
+    useSaveTrash,
+    useUpdateJob,
+} from '../hooks/useJobs'
+import { useAuth } from '../auth/authState'
 
 const AddJobModal = lazy(() => import('../components/AddJobModal'))
 const CsvUpload = lazy(() => import('../components/CsvUpload'))
@@ -52,26 +62,31 @@ function readStoredJobsSafely(): StoredJobsResult {
 function Dashboard() {
     const { searchText, statusFilter, setSearchText, setStatusFilter, } = useUIStore()
     const queryClient = useQueryClient()
+    const { session } = useAuth()
+    const userId = session?.user.id ?? ''
 
-    const { data: queryJobs = [], isLoading, isError } = useJobs()
-    const addJobMutation = useAddJob()
-    const updateJobMutation = useUpdateJob()
-    const updateJobStatusMutation = useUpdateJobStatus()
-    const deleteJobMutation = useDeleteJob()
-    const restoreJobMutation = useRestoreJob()
+    const { data: jobData, isLoading, isError, error: loadError } = useJobData(userId)
+    const addJobMutation = useAddJob(userId)
+    const updateJobMutation = useUpdateJob(userId)
+    const saveJobsMutation = useSaveJobs(userId)
+    const saveTrashMutation = useSaveTrash(userId)
+    const deleteJobMutation = useDeleteJob(userId)
+    const restoreJobMutation = useRestoreJob(userId)
+    const permanentlyDeleteTrashMutation = usePermanentlyDeleteTrashJob(userId)
     const [storedJobs, setStoredJobs] = useState(readStoredJobsSafely)
     const [storageRecoveryError, setStorageRecoveryError] = useState('')
     const [storageRecoveryNotice, setStorageRecoveryNotice] = useState('')
+    const [storageActionError, setStorageActionError] = useState('')
 
-    const [jobs, setJobs] = useState<Job[]>(() => {
+    const [localJobs] = useState<Job[]>(() => {
         if (storedJobs.corruptedStorage.jobs !== undefined) {
             return initialJobs
         }
 
-        return storedJobs.jobs ?? (queryJobs.length > 0 ? queryJobs : initialJobs)
+        return storedJobs.jobs ?? initialJobs
     })
 
-    const [trash, setTrash] = useState<Job[]>(() => {
+    const [localTrash] = useState<Job[]>(() => {
         if (storedJobs.corruptedStorage.trash !== undefined) {
             return []
         }
@@ -92,6 +107,8 @@ function Dashboard() {
             return now - deletedTime < twentyEightDays
         })
     })
+    const jobs = jobData?.jobs ?? localJobs
+    const trash = jobData?.trash ?? localTrash
     const [now] = useState(() => Date.now())
 
     const [isAddJobOpen, setIsAddJobOpen] = useState(false)
@@ -99,24 +116,6 @@ function Dashboard() {
     const [isAddJobOptionsOpen, setIsAddJobOptionsOpen] = useState(false)
     const [isTrashOpen, setIsTrashOpen] = useState(false)
     const [editingJob, setEditingJob] = useState<Job | null>(null)
-
-    // Save jobs to localStorage
-    useEffect(() => {
-        if (Object.keys(storedJobs.corruptedStorage).length > 0) {
-            return
-        }
-
-        localStorage.setItem('jobs', JSON.stringify(jobs))
-    }, [jobs, storedJobs.corruptedStorage])
-
-    // Save trash to localStorage
-    useEffect(() => {
-        if (Object.keys(storedJobs.corruptedStorage).length > 0) {
-            return
-        }
-
-        localStorage.setItem('trash', JSON.stringify(trash))
-    }, [trash, storedJobs.corruptedStorage])
 
     function recoverCorruptedStorage() {
         const timestamp = new Date().toISOString().replaceAll(':', '-')
@@ -152,7 +151,7 @@ function Dashboard() {
         setStorageRecoveryNotice(
             `Damaged data was backed up under ${backupKeys.join(' and ')}. The damaged collections were replaced with safe defaults; valid collections were preserved.`,
         )
-        void queryClient.invalidateQueries({ queryKey: ['jobs'] })
+        void queryClient.invalidateQueries({ queryKey: ['job-data', userId] })
     }
 
     // Search and filter jobs
@@ -230,8 +229,8 @@ function Dashboard() {
     if (isError) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-100">
-                <p className="text-red-600">
-                    Failed to load jobs.
+                <p role="alert" className="max-w-xl px-4 text-center text-red-600">
+                    {loadError instanceof Error ? loadError.message : 'Failed to load jobs.'}
                 </p>
             </div>
         )
@@ -244,6 +243,11 @@ function Dashboard() {
                 {storageRecoveryNotice && (
                     <p role="status" className="w-full max-w-7xl rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">
                         {storageRecoveryNotice}
+                    </p>
+                )}
+                {storageActionError && (
+                    <p role="alert" className="w-full max-w-7xl rounded-lg bg-red-50 p-4 text-sm text-red-700">
+                        {storageActionError}
                     </p>
                 )}
 
@@ -389,44 +393,24 @@ function Dashboard() {
                                 ...targetJobs,
                             ]
 
-                            setJobs(reorderedJobs)
-
-                            if (jobToMove.status !== status) {
-                                await updateJobStatusMutation.mutateAsync({
-                                    jobId,
-                                    status,
-                                })
+                            setStorageActionError('')
+                            try {
+                                await saveJobsMutation.mutateAsync(reorderedJobs)
+                            } catch {
+                                setStorageActionError(
+                                    'Could not save this job change to your account. Please try again.',
+                                )
                             }
                         }}
                         onDeleteJob={async (jobId) => {
-                            const jobToDelete = jobs.find(
-                                (job) => job.id === jobId,
-                            )
-
-                            if (!jobToDelete) {
-                                return
+                            setStorageActionError('')
+                            try {
+                                await deleteJobMutation.mutateAsync(jobId)
+                            } catch {
+                                setStorageActionError(
+                                    'Could not move this job to Trash. Your saved jobs have not been changed.',
+                                )
                             }
-
-                            const trashedJob: Job = {
-                                ...jobToDelete,
-                                deletedAt: new Date().toISOString(),
-                            }
-
-                            // Move job to Trash
-                            setTrash((currentTrash) => [
-                                ...currentTrash,
-                                trashedJob,
-                            ])
-
-                            // Delete from the jobs data source
-                            await deleteJobMutation.mutateAsync(jobId)
-
-                            // Update the visible dashboard
-                            setJobs((currentJobs) =>
-                                currentJobs.filter(
-                                    (job) => job.id !== jobId,
-                                ),
-                            )
                         }}
                         onEditJob={(job) => {
                             setEditingJob(job)
@@ -464,20 +448,9 @@ function Dashboard() {
                             }}
                             onAddJob={async (updatedJob) => {
                                 if (!editingJob) {
-                                    const savedJob =
-                                        await addJobMutation.mutateAsync(updatedJob)
-                                    setJobs((currentJobs) => [
-                                        ...currentJobs,
-                                        savedJob,
-                                    ])
+                                    await addJobMutation.mutateAsync(updatedJob)
                                 } else {
-                                    const savedJob =
-                                        await updateJobMutation.mutateAsync(updatedJob)
-                                    setJobs((currentJobs) =>
-                                        currentJobs.map((job) =>
-                                            job.id === savedJob.id ? savedJob : job,
-                                        ),
-                                    )
+                                    await updateJobMutation.mutateAsync(updatedJob)
                                 }
                                 setEditingJob(null)
                             }}
@@ -491,7 +464,7 @@ function Dashboard() {
                     <Suspense fallback={<p className="text-slate-600">Loading CSV importer...</p>}>
                         <CsvUpload
                             onClose={() => setIsCsvUploadOpen(false)}
-                            onJobsParsed={(newJobs) => {
+                            onJobsParsed={async (newJobs) => {
                                 const existingJobs = new Set(
                                     jobs.map(
                                         (job) =>
@@ -515,10 +488,16 @@ function Dashboard() {
                                 }
 
                                 if (uniqueNewJobs.length > 0) {
-                                    setJobs((currentJobs) => [
-                                        ...currentJobs,
-                                        ...uniqueNewJobs,
-                                    ])
+                                    const updatedJobs = [...jobs, ...uniqueNewJobs]
+                                    try {
+                                        await saveJobsMutation.mutateAsync(updatedJobs)
+                                        setStorageActionError('')
+                                    } catch {
+                                        setStorageActionError(
+                                            'Could not save imported jobs to your account. Please try importing again.',
+                                        )
+                                        throw new Error('Could not save imported jobs.')
+                                    }
                                 }
 
                                 return {
@@ -544,13 +523,20 @@ function Dashboard() {
                                     {trash.length > 0 && (
                                         <button
                                             type="button"
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 const confirmed = window.confirm(
                                                     `Permanently delete all ${trash.length} job${trash.length === 1 ? '' : 's'} in Trash? This cannot be undone.`,
                                                 )
 
                                                 if (confirmed) {
-                                                    setTrash([])
+                                                    setStorageActionError('')
+                                                    try {
+                                                        await saveTrashMutation.mutateAsync([])
+                                                    } catch {
+                                                        setStorageActionError(
+                                                            'Could not clear Trash from your account. Please try again.',
+                                                        )
+                                                    }
                                                 }
                                             }}
                                             className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
@@ -626,23 +612,14 @@ function Dashboard() {
                                                     {/* Restore */}
                                                     <button
                                                         onClick={async () => {
-                                                            await restoreJobMutation.mutateAsync(job)
-
-                                                            setJobs((currentJobs) => [
-                                                                ...currentJobs.filter(
-                                                                    (existingJob) => existingJob.id !== job.id,
-                                                                ),
-                                                                {
-                                                                    ...job,
-                                                                    deletedAt: undefined,
-                                                                },
-                                                            ])
-
-                                                            setTrash((currentTrash) =>
-                                                                currentTrash.filter(
-                                                                    (trashJob) => trashJob.id !== job.id,
-                                                                ),
-                                                            )
+                                                            setStorageActionError('')
+                                                            try {
+                                                                await restoreJobMutation.mutateAsync(job)
+                                                            } catch {
+                                                                setStorageActionError(
+                                                                    'Could not restore this job. Please try again.',
+                                                                )
+                                                            }
                                                         }}
                                                         className="px-3 py-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 text-sm font-medium"
                                                     >
@@ -651,13 +628,15 @@ function Dashboard() {
 
                                                     {/* Delete Forever */}
                                                     <button
-                                                        onClick={() => {
-                                                            setTrash((currentTrash) =>
-                                                                currentTrash.filter(
-                                                                    (trashJob) =>
-                                                                        trashJob.id !== job.id,
-                                                                ),
-                                                            )
+                                                        onClick={async () => {
+                                                            setStorageActionError('')
+                                                            try {
+                                                                await permanentlyDeleteTrashMutation.mutateAsync(job.id)
+                                                            } catch {
+                                                                setStorageActionError(
+                                                                    'Could not permanently delete this job. Please try again.',
+                                                                )
+                                                            }
                                                         }}
                                                         className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium"
                                                     >

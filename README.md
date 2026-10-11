@@ -25,13 +25,19 @@ A React and TypeScript job-search tracker with a Kanban dashboard, analytics, CS
 npm install
 ```
 
-Add the Gemini key to a local `.env.local` file:
+Add the Gemini key and Supabase project settings to a local `.env.local` file:
 
 ```dotenv
 GEMINI_API_KEY=your_gemini_api_key
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
 ```
 
-Keep this key server-side. Do not expose it in frontend variables such as `VITE_*` or commit `.env.local`.
+Keep `GEMINI_API_KEY` server-side. The Supabase URL and publishable/anon key are browser-visible by design; never put a Supabase service-role key in frontend variables. Access to job data is protected by the database row-level security policy.
+
+Create a Supabase project, then run [`supabase/migrations/20261011000000_job_tracker_data.sql`](./supabase/migrations/20261011000000_job_tracker_data.sql) in its SQL Editor. Copy the project URL and publishable/anon key into `.env.local` for local work. Add the same `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` variables to the Vercel project for both Preview and Production deployments, then redeploy.
+
+Users create an account with email and password. Depending on the Supabase Auth email-confirmation setting, they may need to confirm their email before signing in.
 
 ## Run locally
 
@@ -45,7 +51,9 @@ Open the local URL printed by Vercel. `npm run dev` starts Vite only; API routes
 
 ## Data storage
 
-Jobs and Trash are stored in the browser's `localStorage`; the resume PDF is stored in IndexedDB. Data is local to the current browser profile and site origin. It does not automatically sync between browsers, devices, local development, and the deployed site. Refreshing the page should retain saved records. Removing a job moves it to Trash; permanently deleting or clearing Trash cannot be undone.
+Jobs and Trash are stored in Supabase, scoped to the signed-in user with row-level security, and can be accessed across browsers and devices. On the first sign-in for an account, existing valid jobs and Trash from that browser's `localStorage` are copied to the account if it has no cloud data yet. The local values are not removed by this import. Each account starts with the app's sample jobs only if there is no existing browser data to import.
+
+Resume PDFs remain in browser IndexedDB and do not sync to other devices; upload the PDF separately on each device where resume matching is needed. Removing a job moves it to Trash; permanently deleting or clearing Trash cannot be undone.
 
 ## AI endpoints
 

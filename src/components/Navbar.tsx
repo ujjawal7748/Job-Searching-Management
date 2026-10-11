@@ -1,6 +1,11 @@
 import { NavLink } from 'react-router-dom'
 
-function Navbar() {
+type NavbarProps = {
+  email: string
+  onSignOut: () => void
+}
+
+function Navbar({ email, onSignOut }: NavbarProps) {
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `rounded-lg px-2 py-2 text-xs font-medium transition sm:px-4 sm:text-sm ${isActive
       ? 'bg-purple-100 text-purple-700'
@@ -14,22 +19,34 @@ function Navbar() {
           AI Job Tracker
         </NavLink>
 
-        <div className="flex w-full flex-wrap items-center justify-center gap-1 sm:w-auto sm:gap-2">
-          <NavLink to="/" end className={linkClass}>
-            Dashboard
-          </NavLink>
+        <div className="flex w-full flex-wrap items-center justify-center gap-1 sm:w-auto sm:justify-end sm:gap-2">
+          <div className="flex w-full flex-wrap items-center justify-center gap-1 sm:w-auto sm:gap-2">
+            <NavLink to="/" end className={linkClass}>
+              Dashboard
+            </NavLink>
 
-          <NavLink to="/resume-match" className={linkClass}>
-            Resume Match AI
-          </NavLink>
+            <NavLink to="/resume-match" className={linkClass}>
+              Resume Match AI
+            </NavLink>
 
-          <NavLink to="/analytics" className={linkClass}>
-            Analytics
-          </NavLink>
+            <NavLink to="/analytics" className={linkClass}>
+              Analytics
+            </NavLink>
 
-          <NavLink to="/cover-letter" className={linkClass}>
-            AI Cover Letter
-          </NavLink>
+            <NavLink to="/cover-letter" className={linkClass}>
+              AI Cover Letter
+            </NavLink>
+          </div>
+          <span className="hidden max-w-40 truncate text-xs text-slate-500 lg:block" title={email}>
+            {email}
+          </span>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="rounded-lg px-2 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 sm:px-3 sm:text-sm"
+          >
+            Sign out
+          </button>
         </div>
       </div>
     </nav>
