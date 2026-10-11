@@ -11,6 +11,7 @@ A React and TypeScript job-search tracker with a Kanban dashboard, analytics, CS
 - Review application statistics and charts.
 - Upload a PDF resume and compare its extracted text with a saved job.
 - Generate a tailored cover letter from saved or manually entered job details.
+- Reopen or delete your saved resume-match and cover-letter results from account-specific history.
 - Extract job details from a screenshot.
 
 ## Requirements
@@ -35,7 +36,7 @@ SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
 
 Keep `GEMINI_API_KEY` server-side. The Supabase URL and publishable/anon key are browser-visible by design; never put a Supabase service-role key in frontend variables. Access to job data is protected by the database row-level security policy.
 
-Create a Supabase project, then run [`supabase/migrations/20261011000000_job_tracker_data.sql`](./supabase/migrations/20261011000000_job_tracker_data.sql) in its SQL Editor. Copy the project URL and publishable/anon key into `.env.local` for local work. Add the same `SUPABASE_URL` and `SUPABASE_ANON_KEY` variables to the Vercel project for both Preview and Production deployments, then redeploy. Vite exposes only these two explicitly named Supabase variables to the client bundle; use the public anon/publishable key, never a service-role key.
+Create a Supabase project, then run the SQL migrations in [`supabase/migrations`](./supabase/migrations) in filename order in its SQL Editor. The job data and AI history tables each enforce per-user row-level security. Copy the project URL and publishable/anon key into `.env.local` for local work. Add the same `SUPABASE_URL` and `SUPABASE_ANON_KEY` variables to the Vercel project for both Preview and Production deployments, then redeploy. Vite exposes only these two explicitly named Supabase variables to the client bundle; use the public anon/publishable key, never a service-role key.
 
 Users create an account with email and password. Depending on the Supabase Auth email-confirmation setting, they may need to confirm their email before signing in.
 
@@ -54,6 +55,8 @@ Open the local URL printed by Vercel. `npm run dev` starts Vite only; API routes
 Jobs and Trash are stored in Supabase, scoped to the signed-in user with row-level security, and can be accessed across browsers and devices. On the first sign-in for an account, existing valid jobs and Trash from that browser's `localStorage` are copied to the account if it has no cloud data yet. The local values are not removed by this import. Each account starts with the app's sample jobs only if there is no existing browser data to import.
 
 Resume PDFs remain in browser IndexedDB and do not sync to other devices; upload the PDF separately on each device where resume matching is needed. Removing a job moves it to Trash; permanently deleting or clearing Trash cannot be undone.
+
+Completed resume-match analyses and generated cover-letter text are saved to the signed-in user's Supabase account and can be reopened or deleted from their history panel. Raw resume text, uploaded PDFs, job descriptions, skills, and other source inputs are not stored in AI history. History is separated by tool and account; deleting an item removes that saved result.
 
 ## AI endpoints
 

@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Job } from '../types/job'
 import { getJobs } from '../lib/api'
+import { useAuth } from '../auth/authState'
+import AIHistoryPanel from '../components/AIHistoryPanel'
+import {
+  deleteAiHistory,
+  getAiHistory,
+  saveAiHistory,
+} from '../lib/aiHistory'
+import type { AiHistoryRecord } from '../lib/aiHistory'
 
 function CoverLetter() {
+  const { session } = useAuth()
+  const userId = session?.user.id ?? ''
   const [jobs, setJobs] = useState<Job[]>([])
   const [selectedCompany, setSelectedCompany] = useState('')
   const [selectedJobId, setSelectedJobId] = useState('')
@@ -19,17 +29,31 @@ function CoverLetter() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [history, setHistory] = useState<AiHistoryRecord[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true)
+  const [historyError, setHistoryError] = useState('')
 
   useEffect(() => {
-    getJobs()
-      .then((data) => {
-        const activeJobs = data.filter((job) => !job.deletedAt)
-        setJobs(activeJobs)
-      })
-      .catch(() => {
+    async function loadData() {
+      const [jobsResult, historyResult] = await Promise.allSettled([
+        getJobs(),
+        userId ? getAiHistory('cover-letter', userId) : Promise.resolve([]),
+      ])
+      if (jobsResult.status === 'fulfilled') {
+        setJobs(jobsResult.value.filter((job) => !job.deletedAt))
+      } else {
         setError('Unable to load saved jobs. Please refresh the page.')
-      })
-  }, [])
+      }
+      if (historyResult.status === 'fulfilled') {
+        setHistory(historyResult.value)
+      } else {
+        setHistoryError('Could not load your saved history. Please refresh.')
+      }
+      setIsHistoryLoading(false)
+    }
+
+    void loadData()
+  }, [userId])
 
   const companies = useMemo(
     () =>
@@ -128,6 +152,18 @@ function CoverLetter() {
       }
 
       setCoverLetter(data.coverLetter)
+      try {
+        const record = await saveAiHistory(
+          'cover-letter',
+          `${company.trim()} · ${position.trim()}`.slice(0, 300),
+          data.coverLetter,
+          userId,
+        )
+        setHistory((records) => [record, ...records])
+        setHistoryError('')
+      } catch {
+        setHistoryError('Your letter was generated, but could not be saved to history.')
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -151,20 +187,52 @@ function CoverLetter() {
     }
   }
 
+  function openHistoryRecord(record: AiHistoryRecord) {
+    if (record.kind !== 'cover-letter' || typeof record.result !== 'string') return
+    setCoverLetter(record.result)
+    setError('')
+    setSuccess(`Showing saved letter: ${record.title}`)
+    window.setTimeout(() => {
+      document.getElementById('generated-cover-letter')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 0)
+  }
+
+  async function removeHistoryRecord(record: AiHistoryRecord) {
+    if (!window.confirm(`Delete the saved result “${record.title}”?`)) return
+    try {
+      await deleteAiHistory(record.id, userId)
+      setHistory((records) => records.filter((item) => item.id !== record.id))
+      setHistoryError('')
+    } catch (err) {
+      setHistoryError(err instanceof Error ? err.message : 'Could not delete this history item.')
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mx-auto max-w-5xl">
-        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
+    <main className="ai-page min-h-screen px-4 py-6 sm:px-6 sm:py-8 lg:p-8">
+      <div className="ai-page-layout mx-auto max-w-7xl">
+       <div className="min-w-0 space-y-6">
+        <header className="ai-hero animate-page-enter">
+          <div className="ai-hero-icon" aria-hidden="true">✉</div>
+          <p className="eyebrow-label">CAREER INTELLIGENCE</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
           AI Cover Letter Generator
-        </h1>
+          </h1>
 
         <p className="mt-2 text-slate-600">
           Select a saved job or enter job details manually to generate a
           tailored cover letter.
         </p>
+          <div className="hero-badges">
+            <span>Personalized writing</span><span>Private by account</span><span>Ready to refine</span>
+          </div>
+        </header>
 
-        <section className="mt-6 min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-8 sm:p-6">
-          <h2 className="mb-5 text-lg font-semibold text-slate-900">
+        <section className="surface-card animate-page-enter min-w-0 p-4 sm:p-6">
+          <h2 className="mb-5 text-lg font-semibold text-slate-950">
             Select a Saved Job
           </h2>
 
@@ -237,8 +305,8 @@ function CoverLetter() {
           )}
         </section>
 
-        <section className="mt-5 min-w-0 space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
-          <h2 className="text-lg font-semibold text-slate-900">
+        <section className="surface-card animate-page-enter min-w-0 space-y-5 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-slate-950">
             Job and Candidate Details
           </h2>
 
@@ -379,14 +447,14 @@ function CoverLetter() {
             type="button"
             onClick={generateCoverLetter}
             disabled={loading}
-            className="w-full rounded-lg bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="primary-action w-full"
           >
             {loading ? 'Generating Cover Letter...' : 'Generate Cover Letter'}
           </button>
         </section>
 
         {coverLetter && (
-          <section className="mt-6 min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <section id="generated-cover-letter" className="surface-card animate-result mt-6 min-w-0 p-4 sm:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-bold text-slate-900">
                 Your Cover Letter
@@ -410,6 +478,15 @@ function CoverLetter() {
             />
           </section>
         )}
+       </div>
+       <AIHistoryPanel
+         kind="cover-letter"
+         records={history}
+         isLoading={isHistoryLoading}
+         error={historyError}
+         onSelect={openHistoryRecord}
+         onDelete={(record) => void removeHistoryRecord(record)}
+       />
       </div>
     </main>
   )

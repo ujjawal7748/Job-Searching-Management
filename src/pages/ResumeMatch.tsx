@@ -4,6 +4,14 @@ import { deleteSavedResume, getSavedResume, saveResume, } from '../lib/resumeSto
 import type { Job } from '../types/job'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { useAuth } from '../auth/authState'
+import AIHistoryPanel from '../components/AIHistoryPanel'
+import {
+    deleteAiHistory,
+    getAiHistory,
+    saveAiHistory,
+} from '../lib/aiHistory'
+import type { AiHistoryRecord, ResumeMatchResult } from '../lib/aiHistory'
 
 const UNREADABLE_PDF_MESSAGE =
     "We couldn't read this PDF. Please upload a valid PDF file."
@@ -48,6 +56,8 @@ async function extractPdfText(file: File): Promise<string> {
 }
 
 function ResumeMatch() {
+    const { session } = useAuth()
+    const userId = session?.user.id ?? ''
     const [jobs, setJobs] = useState<Job[]>([])
     const [selectedJobId, setSelectedJobId] = useState('')
     const [resumeName, setResumeName] = useState('')
@@ -55,26 +65,42 @@ function ResumeMatch() {
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState('')
     const [message, setMessage] = useState('')
+    const [history, setHistory] = useState<AiHistoryRecord[]>([])
+    const [isHistoryLoading, setIsHistoryLoading] = useState(true)
+    const [historyError, setHistoryError] = useState('')
 
     useEffect(() => {
         async function loadData() {
-            try {
-                const [savedJobs, savedResume] = await Promise.all([
-                    getJobs(),
-                    getSavedResume(),
-                ])
+            const [jobsResult, resumeResult, historyResult] = await Promise.allSettled([
+                getJobs(),
+                getSavedResume(),
+                userId ? getAiHistory('resume-match', userId) : Promise.resolve([]),
+            ])
 
-                setJobs(savedJobs.filter((job) => !job.deletedAt))
-                setResumeName(savedResume?.name ?? '')
-            } catch {
-                setError('Could not load saved jobs or resume.')
-            } finally {
-                setIsLoading(false)
+            if (jobsResult.status === 'fulfilled') {
+                setJobs(jobsResult.value.filter((job) => !job.deletedAt))
+            } else {
+                setError('Could not load saved jobs.')
             }
+
+            if (resumeResult.status === 'fulfilled') {
+                setResumeName(resumeResult.value?.name ?? '')
+            } else {
+                setError((current) => current || 'Could not load your saved resume.')
+            }
+
+            if (historyResult.status === 'fulfilled') {
+                setHistory(historyResult.value)
+            } else {
+                setHistoryError('Could not load your saved history. Please refresh.')
+            }
+
+            setIsLoading(false)
+            setIsHistoryLoading(false)
         }
 
         void loadData()
-    }, [])
+    }, [userId])
 
     async function handleResumeUpload(
         event: React.ChangeEvent<HTMLInputElement>,
@@ -135,14 +161,7 @@ function ResumeMatch() {
     }
 
     const [isAnalyzing, setIsAnalyzing] = useState(false)
-    const [matchResult, setMatchResult] = useState<{
-        matchScore: number
-        matchedSkills: string[]
-        missingSkills: string[]
-        strengths: string[]
-        improvements: string[]
-        summary: string
-    } | null>(null)
+    const [matchResult, setMatchResult] = useState<ResumeMatchResult | null>(null)
 
     const [progress, setProgress] = useState(0)
     const resultRef = useRef<HTMLElement | null>(null)
@@ -211,6 +230,18 @@ function ResumeMatch() {
 
             setMatchResult(data.data)
             setProgress(100)
+            try {
+                const record = await saveAiHistory(
+                    'resume-match',
+                    `${selectedJob.company} · ${selectedJob.position}`.slice(0, 300),
+                    data.data,
+                    userId,
+                )
+                setHistory((records) => [record, ...records])
+                setHistoryError('')
+            } catch {
+                setHistoryError('Analysis completed, but this result could not be saved to your history.')
+            }
         } catch (err) {
             setProgress(0)
             setError(
@@ -224,26 +255,58 @@ function ResumeMatch() {
         }
     }
 
+    function openHistoryRecord(record: AiHistoryRecord) {
+        if (record.kind !== 'resume-match' || typeof record.result === 'string') return
+        setMatchResult(record.result)
+        setSelectedJobId('')
+        setProgress(100)
+        setError('')
+        setMessage(`Showing saved result: ${record.title}`)
+        window.setTimeout(() => {
+            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 0)
+    }
+
+    async function removeHistoryRecord(record: AiHistoryRecord) {
+        if (!window.confirm(`Delete the saved result “${record.title}”?`)) return
+        try {
+            await deleteAiHistory(record.id, userId)
+            setHistory((records) => records.filter((item) => item.id !== record.id))
+            setHistoryError('')
+        } catch (err) {
+            setHistoryError(err instanceof Error ? err.message : 'Could not delete this history item.')
+        }
+    }
+
     if (isLoading) {
         return <div className="p-8 text-slate-600">Loading your saved jobs...</div>
     }
 
     return (
-        <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
-            <div className="mx-auto max-w-5xl space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Resume Match AI</h1>
+        <main className="ai-page min-h-screen p-4 sm:p-6 lg:p-8">
+            <div className="ai-page-layout mx-auto max-w-7xl">
+              <div className="min-w-0 space-y-6">
+                <header className="ai-hero animate-page-enter">
+                    <div className="ai-hero-icon" aria-hidden="true">✦</div>
+                    <p className="eyebrow-label">CAREER INTELLIGENCE</p>
+                    <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Resume Match AI</h1>
                     <p className="mt-2 text-slate-600">
-                        Upload your resume and choose any saved job to prepare for the role.
+                        Turn your resume into a role-specific strategy with a thoughtful, evidence-based match analysis.
                     </p>
-                </div>
+                    <div className="hero-badges">
+                      <span>Private by account</span><span>AI-powered insights</span><span>Instant analysis</span>
+                    </div>
+                </header>
 
-                <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-                    <h2 className="text-lg font-semibold text-slate-900">1. Your Resume</h2>
+                <section className="surface-card animate-page-enter min-w-0 p-4 sm:p-6">
+                    <div className="section-heading">
+                      <span className="step-number">01</span>
+                      <div><p className="eyebrow-label">START HERE</p><h2 className="mt-1 text-lg font-semibold text-slate-950">Your Resume</h2></div>
+                    </div>
 
                     <label
                         htmlFor="resume-pdf"
-                        className="relative mt-4 flex min-w-0 cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-purple-300 p-5 text-center hover:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-500 sm:p-8"
+                        className="relative mt-4 flex min-w-0 cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-indigo-300 p-5 text-center hover:bg-indigo-50 focus-within:ring-2 focus-within:ring-indigo-500 sm:p-8"
                     >
                         <span className="text-3xl">📄</span>
                         <span                         className="mt-2 max-w-full break-words font-semibold text-slate-800">
@@ -279,8 +342,11 @@ function ResumeMatch() {
                     )}
                 </section>
 
-                <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-                    <h2 className="text-lg font-semibold text-slate-900">2. Select a Job</h2>
+                <section className="surface-card animate-page-enter min-w-0 p-4 sm:p-6">
+                    <div className="section-heading">
+                      <span className="step-number">02</span>
+                      <div><p className="eyebrow-label">TARGET ROLE</p><h2 className="mt-1 text-lg font-semibold text-slate-950">Choose a Job</h2></div>
+                    </div>
 
                     <label htmlFor="saved-job" className="mt-4 block text-sm font-medium text-slate-700">
                         All Saved jobs
@@ -334,21 +400,21 @@ function ResumeMatch() {
                         type="button"
                         onClick={handleAnalyze}
                         disabled={isAnalyzing || !resumeName || !selectedJobId}
-                        className="mt-5 w-full rounded-lg bg-purple-600 px-6 py-3 font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        className="primary-action mt-5 w-full sm:w-auto"
                     >
                         {isAnalyzing ? 'Analyzing Resume...' : 'Analyze Resume Match'}
                     </button>
                     
                     {(isAnalyzing || progress > 0) && (
                         <div
-                            className="mt-4 rounded-xl border border-purple-100 bg-white p-4"
+                            className="mt-4 rounded-xl border border-indigo-100 bg-white p-4"
                             aria-live="polite"
                         >
                             <div className="mb-2 flex items-center justify-between gap-3">
                                 <span className="text-sm font-medium text-slate-700">
                                     {isAnalyzing ? 'Analyzing your resume...' : 'Analysis complete'}
                                 </span>
-                                <span className="text-sm font-bold text-purple-700">
+                                <span className="text-sm font-bold text-teal-700">
                                     {progress}%
                                 </span>
                             </div>
@@ -362,7 +428,7 @@ function ResumeMatch() {
                                 aria-valuenow={progress}
                             >
                                 <div
-                                    className="h-full rounded-full bg-purple-600 transition-all duration-300"
+                                    className="h-full rounded-full bg-teal-600 transition-all duration-300"
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
@@ -378,18 +444,18 @@ function ResumeMatch() {
                 {matchResult && (
                     <section
                         ref={resultRef}
-                        className="min-w-0 space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+                        className="surface-card animate-result min-w-0 space-y-5 p-4 sm:p-6">
                         <div>
                             <p className="text-sm font-medium text-slate-500">
                                 Estimated Resume Match
                             </p>
-                            <h2 className="mt-1 text-4xl font-bold text-purple-700">
+                            <h2 className="mt-1 text-4xl font-bold text-indigo-800">
                                 {matchResult.matchScore}%
                             </h2>
 
                             <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
                                 <div
-                                    className="h-full rounded-full bg-purple-600"
+                                    className="h-full rounded-full bg-teal-600"
                                     style={{ width: `${matchResult.matchScore}%` }}
                                 />
                             </div>
@@ -435,6 +501,16 @@ function ResumeMatch() {
                         {message}
                     </p>
                 )}
+
+              </div>
+              <AIHistoryPanel
+                kind="resume-match"
+                records={history}
+                isLoading={isHistoryLoading}
+                error={historyError}
+                onSelect={openHistoryRecord}
+                onDelete={(record) => void removeHistoryRecord(record)}
+              />
             </div>
         </main>
     )
