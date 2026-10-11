@@ -18,7 +18,7 @@ export const supabase = isSupabaseConfigured
 export function getSupabase() {
   if (!supabase) {
     throw new Error(
-      'Cloud storage is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
+      'Cloud storage is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY locally, or SUPABASE_URL and SUPABASE_ANON_KEY on Vercel.',
     )
   }
 
