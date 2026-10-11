@@ -127,8 +127,13 @@ ${jobDescription}
         throw error
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      result = await model.generateContent(prompt)
+      const fallbackModel = genAI.getGenerativeModel({
+        model: 'gemini-3.5-flash-lite',
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      })
+      result = await fallbackModel.generateContent(prompt)
     }
 
     const data = JSON.parse(result.response.text())

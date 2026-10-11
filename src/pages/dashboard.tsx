@@ -533,19 +533,39 @@ function Dashboard() {
                 {/* Trash Modal */}
                 {isTrashOpen && (
                     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-                        <div className="bg-white rounded-xl p-6 w-full max-w-lg">
+                        <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-2xl font-bold text-slate-900">
                                     🗑️ Trash
                                 </h2>
 
-                                <button
-                                    onClick={() => setIsTrashOpen(false)}
-                                    className="text-slate-500 hover:text-slate-900 text-xl"
-                                >
-                                    ✕
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    {trash.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const confirmed = window.confirm(
+                                                    `Permanently delete all ${trash.length} job${trash.length === 1 ? '' : 's'} in Trash? This cannot be undone.`,
+                                                )
+
+                                                if (confirmed) {
+                                                    setTrash([])
+                                                }
+                                            }}
+                                            className="rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100"
+                                        >
+                                            Clear Trash
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setIsTrashOpen(false)}
+                                        className="text-slate-500 hover:text-slate-900 text-xl"
+                                        aria-label="Close Trash"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
 
                             {trash.length === 0 ? (

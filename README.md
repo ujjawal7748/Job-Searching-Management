@@ -1,75 +1,65 @@
-# React + TypeScript + Vite
+# AI Job Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React and TypeScript job-search tracker with a Kanban dashboard, analytics, CSV import, and Gemini-powered resume matching, cover-letter generation, and screenshot extraction.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Track jobs through Wishlist, Applied, Interview, Offer, and Rejected.
+- Search, filter, edit, and move jobs between Kanban columns.
+- Soft-delete jobs to Trash, restore them, delete them permanently, or clear Trash after confirmation.
+- Import jobs from CSV and view import, duplicate, and invalid-row counts.
+- Review application statistics and charts.
+- Upload a PDF resume and compare its extracted text with a saved job.
+- Generate a tailored cover letter from saved or manually entered job details.
+- Extract job details from a screenshot.
 
-## React Compiler
+## Requirements
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js 20 or later
+- npm
+- A Gemini API key for AI features
 
-## Expanding the ESLint configuration
+## Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```sh
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Add the Gemini key to a local `.env.local` file:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```dotenv
+GEMINI_API_KEY=your_gemini_api_key
 ```
+
+Keep this key server-side. Do not expose it in frontend variables such as `VITE_*` or commit `.env.local`.
+
+## Run locally
+
+Use Vercel's local development server so the `/api/*` functions are available:
+
+```sh
+npm run dev:vercel
+```
+
+Open the local URL printed by Vercel. `npm run dev` starts Vite only; API routes require the Vercel development server.
+
+## Data storage
+
+Jobs and Trash are stored in the browser's `localStorage`; the resume PDF is stored in IndexedDB. Data is local to the current browser profile and site origin. It does not automatically sync between browsers, devices, local development, and the deployed site. Refreshing the page should retain saved records. Removing a job moves it to Trash; permanently deleting or clearing Trash cannot be undone.
+
+## AI endpoints
+
+- `POST /api/match-resume` — analyzes extracted resume text against a job description. It uses Gemini 3.8 Flash and falls back to Gemini 3.5 Flash-Lite if the primary model responds with HTTP 503.
+- `POST /api/generate-cover-letter` — generates a cover letter.
+- `POST /api/parse-job` — extracts job details from an image; image data is limited to 3 MiB decoded.
+
+Set `GEMINI_API_KEY` in Vercel Project Settings for deployed environments. AI endpoints call Gemini server-side. Configure production request protection in the Vercel Firewall; the application endpoints do not implement authentication or a distributed rate limiter.
+
+## Checks
+
+```sh
+npm run build
+npm run lint
+```
+
+There is currently no automated test runner configured.

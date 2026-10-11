@@ -4,7 +4,7 @@ import type { Job, JobStatus } from '../types/job'
 
 type AddJobModalProps = {
     onClose: () => void
-    onAddJob: (job: Job) => void
+    onAddJob: (job: Job) => Promise<void> | void
     editingJob?: Job | null
 }
 
@@ -25,6 +25,8 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
 
     const [isExtracting, setIsExtracting] = useState(false)
     const [extractError, setExtractError] = useState('')
+    const [isSaving, setIsSaving] = useState(false)
+    const [saveError, setSaveError] = useState('')
 
     function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0]
@@ -238,8 +240,10 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
         }
     }
 
-    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        setIsSaving(true)
+        setSaveError('')
 
         const newJob: Job = {
             id: editingJob?.id ?? crypto.randomUUID(),
@@ -260,8 +264,14 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
             description,
         }
 
-        onAddJob(newJob)
-        onClose()
+        try {
+            await onAddJob(newJob)
+            onClose()
+        } catch {
+            setSaveError('Could not save the job. Please try again.')
+        } finally {
+            setIsSaving(false)
+        }
     }
 
     return (
@@ -355,7 +365,7 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
                 </div>
 
                 <form
-                    onSubmit={handleSubmit}
+                    onSubmit={(event) => void handleSubmit(event)}
                     className="space-y-4"
                 >
                     {/* Company */}
@@ -535,6 +545,11 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
                     </div>
 
                     {/* Buttons */}
+                    {saveError && (
+                        <p role="alert" className="text-sm text-red-600">
+                            {saveError}
+                        </p>
+                    )}
                     <div className="flex justify-end gap-3 pt-4">
                         <button
                             type="button"
@@ -546,9 +561,14 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
 
                         <button
                             type="submit"
-                            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                            disabled={isSaving}
+                            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {editingJob ? 'Update Job' : 'Add Job'}
+                            {isSaving
+                                ? 'Saving...'
+                                : editingJob
+                                    ? 'Update Job'
+                                    : 'Add Job'}
                         </button>
                     </div>
                 </form>
