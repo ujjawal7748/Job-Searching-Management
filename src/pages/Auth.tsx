@@ -51,8 +51,8 @@ function Auth() {
               Cloud storage setup required
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Configure <code>VITE_SUPABASE_URL</code> and{' '}
-              <code>VITE_SUPABASE_ANON_KEY</code> from your Supabase project,
+              Configure <code>SUPABASE_URL</code> and{' '}
+              <code>SUPABASE_ANON_KEY</code> from your Supabase project,
               then apply the SQL migration in{' '}
               <code>supabase/migrations</code>.
             </p>
