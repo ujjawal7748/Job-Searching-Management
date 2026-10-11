@@ -277,7 +277,7 @@ function AddJobModal({ onClose, onAddJob, editingJob }: AddJobModalProps) {
     return (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
             <div
-                className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+                className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 sm:p-6"
                 onClick={(event) => event.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-6">

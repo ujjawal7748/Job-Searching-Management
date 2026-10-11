@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, Legend, } from 'recharts'
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, } from 'recharts'
 
 import type { Job } from '../types/job'
 import { getJobs } from '../lib/api'
@@ -24,11 +24,11 @@ function Analytics() {
     }, [])
 
     if (loading) {
-        return <main className="p-8 text-slate-600">Loading analytics...</main>
+        return <main className="p-4 text-slate-600 sm:p-8">Loading analytics...</main>
     }
 
     if (error) {
-        return <main className="p-8 text-red-600">{error}</main>
+        return <main className="p-4 text-red-600 sm:p-8">{error}</main>
     }
 
     const activeJobs = jobs.filter((job) => job.status !== 'wishlist')
@@ -60,7 +60,7 @@ function Analytics() {
     const funnelColors = ['#64748b', '#3b82f6', '#10b981']
 
     return (
-        <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
+        <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
             <div className="mx-auto max-w-7xl">
                 <h1 className="text-3xl font-bold text-slate-900">
                     Job Analytics
@@ -73,7 +73,7 @@ function Analytics() {
                     {stats.map((stat) => (
                         <div
                             key={stat.label}
-                            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                            className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                         >
                             <p className="text-sm font-medium text-slate-500">
                                 {stat.label}
@@ -86,7 +86,7 @@ function Analytics() {
                 </section>
 
                 <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <h2 className="mb-5 text-lg font-semibold text-slate-900">
                             Weekly Applications
                         </h2>
@@ -112,7 +112,7 @@ function Analytics() {
                         )}
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                         <h2 className="mb-5 text-lg font-semibold text-slate-900">
                             Application Funnel
                         </h2>
@@ -121,7 +121,7 @@ function Analytics() {
                                 Add applications to see your funnel.
                             </p>
                         ) : (
-                            <ResponsiveContainer width="100%" height={300}>
+                            <ResponsiveContainer width="100%" height={240}>
                                 <PieChart>
                                     <Pie
                                         data={funnelData.filter((item) => item.count > 0)}
@@ -129,10 +129,7 @@ function Analytics() {
                                         nameKey="status"
                                         cx="50%"
                                         cy="45%"
-                                        outerRadius={90}
-                                        label={({ name, value }) =>
-                                            `${String(name ?? '')}: ${String(value ?? 0)}`
-                                        }
+                                        outerRadius="70%"
                                     >
                                         {funnelData
                                             .filter((item) => item.count > 0)
@@ -150,9 +147,31 @@ function Analytics() {
                                             ))}
                                     </Pie>
                                     <Tooltip />
-                                    <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
+                        )}
+                        {activeJobs.length > 0 && (
+                            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-slate-600">
+                                {funnelData
+                                    .filter((item) => item.count > 0)
+                                    .map((item) => (
+                                        <li key={item.status} className="flex items-center gap-2">
+                                            <span
+                                                aria-hidden="true"
+                                                className="h-3 w-3 shrink-0 rounded-sm"
+                                                style={{
+                                                    backgroundColor:
+                                                        funnelColors[
+                                                            funnelData.findIndex(
+                                                                (entry) => entry.status === item.status,
+                                                            )
+                                                        ],
+                                                }}
+                                            />
+                                            <span>{item.status}: {item.count}</span>
+                                        </li>
+                                    ))}
+                            </ul>
                         )}
                     </div>
                 </section>

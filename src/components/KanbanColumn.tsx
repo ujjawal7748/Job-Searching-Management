@@ -22,7 +22,14 @@ type DraggableJobCardProps = {
 }
 
 function DraggableJobCard({ job, onDeleteJob, onEditJob }: DraggableJobCardProps) {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    const {
+        attributes,
+        listeners,
+        setActivatorNodeRef,
+        setNodeRef,
+        transform,
+        transition,
+    } = useSortable({
         id: job.id,
     })
 
@@ -30,31 +37,44 @@ function DraggableJobCard({ job, onDeleteJob, onEditJob }: DraggableJobCardProps
         <article
             ref={setNodeRef}
             style={{ transform: CSS.Transform.toString(transform), transition }}
-            {...listeners}
-            {...attributes}
-            className="bg-white rounded-lg p-4 shadow cursor-grab active:cursor-grabbing touch-none"
+            className="min-w-0 rounded-lg bg-white p-4 shadow"
         >
-            <div className="flex items-center justify-center gap-3">
-                <h3 className="font-bold text-slate-900">{job.position}</h3>
+            <div className="flex min-w-0 items-start gap-2">
                 <button
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => onEditJob(job)}
-                    className="text-slate-400 hover:text-blue-600 transition"
-                    title="Edit Job"
+                    ref={setActivatorNodeRef}
+                    type="button"
+                    {...attributes}
+                    {...listeners}
+                    className="touch-none rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    aria-label={`Drag ${job.position}`}
+                    title="Drag to move"
                 >
-                    ✏️
+                    ⠿
                 </button>
-                <button
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => onDeleteJob(job.id)}
-                    className="text-slate-400 hover:text-red-600 transition"
-                    title="Move to Trash"
-                >
-                    🗑️
-                </button>
+                <h3 className="min-w-0 flex-1 break-words font-bold text-slate-900">{job.position}</h3>
+                <div className="flex shrink-0 items-center gap-2">
+                    <button
+                        type="button"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={() => onEditJob(job)}
+                        className="text-slate-400 transition hover:text-blue-600"
+                        title="Edit Job"
+                    >
+                        ✏️
+                    </button>
+                    <button
+                        type="button"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={() => onDeleteJob(job.id)}
+                        className="text-slate-400 transition hover:text-red-600"
+                        title="Move to Trash"
+                    >
+                        🗑️
+                    </button>
+                </div>
             </div>
-            <p className="text-slate-600">{job.company}</p>
-            <p className="text-sm text-slate-500">{job.location}</p>
+            <p className="break-words text-slate-600">{job.company}</p>
+            <p className="break-words text-sm text-slate-500">{job.location}</p>
             {job.salary && (
                 <p className="mt-2 text-sm font-medium text-slate-700">
                     Salary: {job.salary}
@@ -78,7 +98,7 @@ function DraggableJobCard({ job, onDeleteJob, onEditJob }: DraggableJobCardProps
             {job.description && (
                 <div className="mt-2">
                     <p className="text-sm font-medium text-slate-700">Description:</p>
-                    <p className="text-sm text-slate-600 mt-1">{job.description}</p>
+                    <p className="mt-1 break-words text-sm text-slate-600">{job.description}</p>
                 </div>
             )}
         </article>

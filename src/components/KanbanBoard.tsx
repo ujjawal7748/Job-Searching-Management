@@ -55,15 +55,20 @@ function KanbanBoard({
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
-      <div className="w-full max-w-7xl min-w-0 overflow-x-auto">
-        <div className="flex w-max gap-6 pb-2 md:w-full">
+      <div
+        className="w-full max-w-7xl min-w-0 overflow-x-auto"
+        role="region"
+        aria-label="Job applications by status"
+        tabIndex={0}
+      >
+        <div className="flex w-max gap-4 pb-2 sm:gap-6 xl:w-full">
           {statuses.map((status) => {
             const title = status[0].toUpperCase() + status.slice(1)
 
             return (
               <div
                 key={status}
-                className="w-72 shrink-0 md:w-auto md:min-w-0 md:flex-1"
+                className="w-72 shrink-0 xl:min-w-0 xl:flex-1"
               >
                 <KanbanColumn
                   title={title}

@@ -240,7 +240,7 @@ function Dashboard() {
     return (
         <div className="w-full min-h-screen bg-slate-100">
 
-            <main className="flex flex-col items-center gap-10 min-h-[calc(100vh-73px)] py-8">
+            <main className="flex min-h-[calc(100vh-73px)] flex-col items-center gap-8 px-4 py-6 sm:gap-10 sm:px-6 sm:py-8">
                 {storageRecoveryNotice && (
                     <p role="status" className="w-full max-w-7xl rounded-lg bg-emerald-50 p-4 text-sm text-emerald-800">
                         {storageRecoveryNotice}
@@ -248,15 +248,15 @@ function Dashboard() {
                 )}
 
                 {/* Top Actions */}
-                <div className="w-full max-w-7xl flex items-center justify-center relative">
+                <div className="flex w-full max-w-7xl flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-                    <h1 className="text-5xl font-bold text-slate-900">
+                    <h1 className="text-3xl font-bold text-slate-900 sm:text-5xl">
                         AI Job Tracker Dashboard
                     </h1>
 
                     <button
                         onClick={() => setIsTrashOpen(true)}
-                        className="absolute right-5 flex items-center gap-2 text-slate-600 hover:text-red-600 transition"
+                        className="flex items-center gap-2 text-slate-600 transition hover:text-red-600 sm:shrink-0"
                         title="View Trash"
                     >
                         <span className="text-xl">
@@ -278,7 +278,7 @@ function Dashboard() {
                 {/* Add Job Button */}
                 <button
                     onClick={() => setIsAddJobOptionsOpen(true)}
-                    className="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700"
+                    className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700"
                 >
                     + Add Job
                 </button>
@@ -532,15 +532,15 @@ function Dashboard() {
 
                 {/* Trash Modal */}
                 {isTrashOpen && (
-                    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-                        <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+                        <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-4 sm:p-6">
 
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                                 <h2 className="text-2xl font-bold text-slate-900">
                                     🗑️ Trash
                                 </h2>
 
-                                <div className="flex items-center gap-3">
+                                <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
                                     {trash.length > 0 && (
                                         <button
                                             type="button"
@@ -579,7 +579,7 @@ function Dashboard() {
                                             key={job.id}
                                             className="border border-slate-200 rounded-lg p-4"
                                         >
-                                            <div className="flex items-center justify-between gap-4">
+                                            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
 
                                                 <div>
                                                     <h3 className="font-semibold text-slate-900">

@@ -152,9 +152,9 @@ function CoverLetter() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-5xl">
-        <h1 className="text-3xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
           AI Cover Letter Generator
         </h1>
 
@@ -163,7 +163,7 @@ function CoverLetter() {
           tailored cover letter.
         </p>
 
-        <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-6 min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-8 sm:p-6">
           <h2 className="mb-5 text-lg font-semibold text-slate-900">
             Select a Saved Job
           </h2>
@@ -237,7 +237,7 @@ function CoverLetter() {
           )}
         </section>
 
-        <section className="mt-6 space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-5 min-w-0 space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:mt-6 sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900">
             Job and Candidate Details
           </h2>
@@ -255,7 +255,7 @@ function CoverLetter() {
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="Enter company name"
-                className="w-full rounded-lg border border-slate-300 px-3 py-3"
+                className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-3"
               />
             </div>
 
@@ -271,7 +271,7 @@ function CoverLetter() {
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
                 placeholder="e.g. Frontend Developer"
-                className="w-full rounded-lg border border-slate-300 px-3 py-3"
+                className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-3"
               />
             </div>
           </div>
@@ -288,7 +288,7 @@ function CoverLetter() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="e.g. Remote, Bengaluru"
-              className="w-full rounded-lg border border-slate-300 px-3 py-3"
+              className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-3"
             />
           </div>
 
@@ -305,7 +305,7 @@ function CoverLetter() {
               onChange={(e) => setJobDescription(e.target.value)}
               placeholder="Paste the job description here..."
               rows={6}
-              className="w-full rounded-lg border border-slate-300 px-3 py-3"
+              className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-3"
             />
           </div>
 
@@ -322,7 +322,7 @@ function CoverLetter() {
               onChange={(e) => setSkills(e.target.value)}
               placeholder="JavaScript, React, TypeScript..."
               rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-3"
+              className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-3"
             />
           </div>
 
@@ -339,7 +339,7 @@ function CoverLetter() {
               onChange={(e) => setExperience(e.target.value)}
               placeholder="Describe your experience, projects, and achievements..."
               rows={4}
-              className="w-full rounded-lg border border-slate-300 px-3 py-3"
+              className="w-full min-w-0 rounded-lg border border-slate-300 px-3 py-3"
             />
           </div>
 
@@ -386,7 +386,7 @@ function CoverLetter() {
         </section>
 
         {coverLetter && (
-          <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="mt-6 min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-bold text-slate-900">
                 Your Cover Letter

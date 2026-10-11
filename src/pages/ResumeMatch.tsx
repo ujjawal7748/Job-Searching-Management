@@ -229,24 +229,24 @@ function ResumeMatch() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
+        <main className="min-h-screen bg-slate-50 p-4 sm:p-6">
             <div className="mx-auto max-w-5xl space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Resume Match AI</h1>
+                    <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Resume Match AI</h1>
                     <p className="mt-2 text-slate-600">
                         Upload your resume and choose any saved job to prepare for the role.
                     </p>
                 </div>
 
-                <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                     <h2 className="text-lg font-semibold text-slate-900">1. Your Resume</h2>
 
                     <label
                         htmlFor="resume-pdf"
-                        className="relative mt-4 flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-purple-300 p-8 text-center hover:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-500"
+                        className="relative mt-4 flex min-w-0 cursor-pointer flex-col items-center rounded-xl border-2 border-dashed border-purple-300 p-5 text-center hover:bg-purple-50 focus-within:ring-2 focus-within:ring-purple-500 sm:p-8"
                     >
                         <span className="text-3xl">📄</span>
-                        <span className="mt-2 font-semibold text-slate-800">
+                        <span                         className="mt-2 max-w-full break-words font-semibold text-slate-800">
                             {resumeName || 'Choose your resume PDF'}
                         </span>
                         <span className="mt-1 text-sm text-slate-500">
@@ -279,7 +279,7 @@ function ResumeMatch() {
                     )}
                 </section>
 
-                <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <section className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                     <h2 className="text-lg font-semibold text-slate-900">2. Select a Job</h2>
 
                     <label htmlFor="saved-job" className="mt-4 block text-sm font-medium text-slate-700">
@@ -310,15 +310,15 @@ function ResumeMatch() {
                         if (!selectedJob) return null
 
                         return (
-                            <div className="mt-4 rounded-lg bg-slate-50 p-4">
-                                <h3 className="font-semibold text-slate-900">{selectedJob.position}</h3>
+                            <div className="mt-4 min-w-0 rounded-lg bg-slate-50 p-4">
+                                <h3 className="break-words font-semibold text-slate-900">{selectedJob.position}</h3>
                                 <p className="mt-1 text-sm text-slate-600">
                                     {selectedJob.company} · {selectedJob.location}
                                 </p>
                                 <p className="mt-2 text-sm text-slate-500">
                                     Status: {selectedJob.status}
                                 </p>
-                                <p className="mt-3 text-sm text-slate-700">
+                                <p className="mt-3 break-words text-sm text-slate-700">
                                     {selectedJob.description || 'No job description saved for this job.'}
                                 </p>
                                 {(selectedJob.skills?.length ?? 0) > 0 && (
@@ -334,7 +334,7 @@ function ResumeMatch() {
                         type="button"
                         onClick={handleAnalyze}
                         disabled={isAnalyzing || !resumeName || !selectedJobId}
-                        className="mt-5 rounded-lg bg-purple-600 px-6 py-3 font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="mt-5 w-full rounded-lg bg-purple-600 px-6 py-3 font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                     >
                         {isAnalyzing ? 'Analyzing Resume...' : 'Analyze Resume Match'}
                     </button>
@@ -378,7 +378,7 @@ function ResumeMatch() {
                 {matchResult && (
                     <section
                         ref={resultRef}
-                        className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                        className="min-w-0 space-y-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                         <div>
                             <p className="text-sm font-medium text-slate-500">
                                 Estimated Resume Match
@@ -394,7 +394,7 @@ function ResumeMatch() {
                                 />
                             </div>
 
-                            <p className="mt-3 text-slate-700">{matchResult.summary}</p>
+                            <p className="mt-3 break-words text-slate-700">{matchResult.summary}</p>
                             <p className="mt-2 text-xs text-slate-500">
                                 AI-generated estimate, not a hiring prediction.
                             </p>
@@ -436,7 +436,7 @@ function ResumeMatch() {
                     </p>
                 )}
             </div>
-        </div>
+        </main>
     )
 }
 
